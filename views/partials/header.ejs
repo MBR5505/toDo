@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiks ferdig - Todo List App</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <script src="/js/auth.js"></script>
+</head>
+<body>
+  <header>
+    <nav>
+      <div class="logo">
+        <h1>Fiks ferdig</h1>
+      </div>
+      <div class="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+      </div>
+      <ul class="nav-links">
+        <% if (typeof user !== 'undefined') { %>
+          <li><a href="/todos"><i class="fas fa-calendar-week"></i> Weekly View</a></li>
+          <li><a href="/todos/upcoming"><i class="fas fa-tasks"></i> Upcoming Tasks</a></li>
+          <li><a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> Logout (<%= user.username %>)</a></li>
+        <% } else { %>
+          <li><a href="/auth/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+          <li><a href="/auth/register"><i class="fas fa-user-plus"></i> Register</a></li>
+        <% } %>
+      </ul>
+    </nav>
+  </header>
+  <main>

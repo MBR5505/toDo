@@ -1,0 +1,123 @@
+<%- include('../partials/header') %>
+
+<div class="todo-form-container">
+  <h2>Edit Todo</h2>
+  
+  <% if (typeof error !== 'undefined') { %>
+    <div class="error-message">
+      <%= error %>
+    </div>
+  <% } %>
+  
+  <form action="/todos/edit/<%= todo._id %>" method="POST">
+    <div class="form-group">
+      <label for="title">Title *</label>
+      <input 
+        type="text" 
+        id="title" 
+        name="title" 
+        required 
+        value="<%= todo.title %>"
+      >
+    </div>
+    
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea 
+        id="description" 
+        name="description" 
+        rows="3"
+        placeholder="Enter description (optional)"
+      ><%= todo.description || '' %></textarea>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="date">Date *</label>
+        <input 
+          type="date" 
+          id="date" 
+          name="date" 
+          required 
+          value="<%= todo.date.toISOString().split('T')[0] %>"
+        >
+        <div class="form-help">Current: <%= todo.date.toDateString() %></div>
+      </div>
+      
+      <div class="form-group">
+        <label for="time">Time *</label>
+        <input 
+          type="time" 
+          id="time" 
+          name="time" 
+          required 
+          value="<%= todo.time %>"
+        >
+      </div>
+    </div>
+    
+    <div class="form-group checkbox-group">
+      <label>
+        <input 
+          type="checkbox" 
+          id="completed" 
+          name="completed" 
+          <%= todo.completed ? 'checked' : '' %>
+        >
+        Mark as completed
+      </label>
+    </div>
+    
+    <div class="meta-info">
+      <div class="meta-item">Created: <%= todo.createdAt.toLocaleString() %></div>
+      <div class="meta-item">Status: <%= todo.completed ? 'Completed' : 'Active' %></div>
+    </div>
+    
+    <div class="form-actions">
+      <a href="/todos" class="btn secondary">Cancel</a>
+      <button type="submit" class="btn primary">Update Todo</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Confirm before leaving with unsaved changes
+    const form = document.querySelector('form');
+    const initialFormState = getFormValues(form);
+    
+    window.addEventListener('beforeunload', function(e) {
+      const currentFormState = getFormValues(form);
+      if (JSON.stringify(initialFormState) !== JSON.stringify(currentFormState)) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+    
+    // Cancel button should not trigger beforeunload warning
+    document.querySelector('.btn.secondary').addEventListener('click', function() {
+      window.removeEventListener('beforeunload', function() {});
+    });
+    
+    // Form submission should not trigger beforeunload warning
+    form.addEventListener('submit', function() {
+      window.removeEventListener('beforeunload', function() {});
+    });
+  });
+  
+  function getFormValues(form) {
+    const formData = new FormData(form);
+    const values = {};
+    
+    for (let [key, value] of formData.entries()) {
+      values[key] = value;
+    }
+    
+    // Handle checkbox specifically
+    values.completed = form.querySelector('#completed').checked;
+    
+    return values;
+  }
+</script>
+
+<%- include('../partials/footer') %>

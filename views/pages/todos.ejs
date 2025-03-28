@@ -1,0 +1,114 @@
+<%- include('../partials/header') %>
+
+<div class="week-container">
+  <div class="week-navigation">
+    <div class="week-controls">
+      <a href="/todos/week/<%= currentYear %>/<%= currentWeek - 1 %>" class="btn secondary">
+        <i class="fas fa-chevron-left"></i> Previous
+      </a>
+      <span class="current-week">Week <%= currentWeek %>, <%= currentYear %></span>
+      <a href="/todos/week/<%= currentYear %>/<%= currentWeek + 1 %>" class="btn secondary">
+        Next <i class="fas fa-chevron-right"></i>
+      </a>
+    </div>
+    <div class="week-selector">
+      <form action="/todos/week" method="GET" id="weekSelectForm" class="inline-form">
+        <label for="year">Year:</label>
+        <select id="year" name="year">
+          <% for(let y = 2020; y <= 2030; y++) { %>
+            <option value="<%= y %>" <%= y === currentYear ? 'selected' : '' %>><%= y %></option>
+          <% } %>
+        </select>
+        <label for="week">Week:</label>
+        <select id="week" name="week">
+          <% for(let w = 1; w <= 53; w++) { %>
+            <option value="<%= w %>" <%= w === currentWeek ? 'selected' : '' %>><%= w %></option>
+          <% } %>
+        </select>
+        <button type="submit" class="btn primary">Go</button>
+      </form>
+    </div>
+    <a href="/todos/create" class="btn primary create-todo-btn">
+      <i class="fas fa-plus"></i> New Todo
+    </a>
+  </div>
+
+  <div class="calendar">
+    <div class="weekdays">
+      <div class="hour-column"></div>
+      <% 
+      const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      weekdays.forEach(day => { 
+      %>
+        <div class="day-column">
+          <div class="day-header"><%= day %></div>
+        </div>
+      <% }); %>
+    </div>
+
+    <div class="time-grid">
+      <% 
+      // Hours from 6am to 10pm
+      for(let hour = 6; hour <= 22; hour++) { 
+        const displayHour = hour > 12 ? hour - 12 : hour;
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+      %>
+        <div class="hour-row">
+          <div class="hour-label"><%= displayHour %><%= ampm %></div>
+          <% weekdays.forEach(day => { %>
+            <div class="time-slot" data-day="<%= day %>" data-hour="<%= hour %>">
+              <% 
+              // Find todos for this day and hour
+              const todosForSlot = todos.filter(todo => {
+                return todo.day === day && parseInt(todo.time.split(':')[0]) === hour;
+              });
+              
+              todosForSlot.forEach(todo => { 
+              %>
+                <div class="todo-item <%= todo.completed ? 'completed' : '' %>" title="<%= todo.description || '' %>">
+                  <div class="todo-title"><%= todo.title %></div>
+                  <div class="todo-actions">
+                    <form action="/todos/toggle/<%= todo._id %>" method="POST" class="inline-form">
+                      <button type="submit" class="action-btn toggle-btn" title="Mark as <%= todo.completed ? 'incomplete' : 'complete' %>">
+                        <i class="fas <%= todo.completed ? 'fa-check-circle' : 'fa-circle' %>"></i>
+                      </button>
+                    </form>
+                    <a href="/todos/edit/<%= todo._id %>" class="action-btn edit-btn" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <form action="/todos/delete/<%= todo._id %>" method="POST" class="inline-form delete-form">
+                      <button type="submit" class="action-btn delete-btn" title="Delete">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Client-side script for week selection form
+  document.getElementById('weekSelectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const year = document.getElementById('year').value;
+    const week = document.getElementById('week').value;
+    window.location.href = `/todos/week/${year}/${week}`;
+  });
+
+  // Confirm before deleting a todo
+  document.querySelectorAll('.delete-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+      if (!confirm('Are you sure you want to delete this todo?')) {
+        e.preventDefault();
+      }
+    });
+  });
+</script>
+
+<%- include('../partials/footer') %>
