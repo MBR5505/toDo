@@ -77,6 +77,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  // Enhanced hover effects for time slots with multiple todos
+  const todoCountWrappers = document.querySelectorAll('.todo-count-wrapper');
+  if (todoCountWrappers.length > 0) {
+    todoCountWrappers.forEach(wrapper => {
+      // Handle clicks on specific todo items
+      wrapper.querySelectorAll('.todo-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+          // Only redirect if not clicking on action buttons
+          if (!e.target.closest('.todo-actions')) {
+            const editUrl = this.querySelector('.edit-btn').getAttribute('href');
+            window.location.href = editUrl;
+          }
+        });
+      });
+    });
+  }
+  
   // Today highlight in calendar
   highlightToday();
 });
@@ -87,23 +104,47 @@ function highlightToday() {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const todayName = days[today.getDay()];
   
-  // Get all day columns
-  const dayColumns = document.querySelectorAll('.day-column');
-  const dayHeaders = document.querySelectorAll('.day-header');
+  // Get current week and year displayed on the page
+  const currentWeekElement = document.querySelector('.current-week');
+  if (!currentWeekElement) return;
   
-  // Loop through headers to find today
-  for (let i = 0; i < dayHeaders.length; i++) {
-    if (dayHeaders[i].textContent.trim() === todayName) {
-      dayHeaders[i].classList.add('today');
-      // Also highlight time slots for today
-      const hourRows = document.querySelectorAll('.hour-row');
-      hourRows.forEach(row => {
-        const todaySlot = row.querySelectorAll('.time-slot')[i];
-        if (todaySlot) {
-          todaySlot.classList.add('today-slot');
-        }
-      });
-      break;
+  // Extract week and year from the displayed text (format: "Week XX, YYYY")
+  const weekYearText = currentWeekElement.textContent;
+  const matches = weekYearText.match(/Week (\d+), (\d+)/);
+  
+  if (!matches) return;
+  
+  const displayedWeek = parseInt(matches[1]);
+  const displayedYear = parseInt(matches[2]);
+  
+  // Calculate current week and year
+  const currentYear = today.getFullYear();
+  // Use the same getWeekNumber function as the server
+  // This is a simplified version for client-side
+  const currentDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  currentDate.setUTCDate(currentDate.getUTCDate() + 4 - (currentDate.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(currentDate.getUTCFullYear(), 0, 1));
+  const currentWeek = Math.ceil((((currentDate - yearStart) / 86400000) + 1) / 7);
+  
+  // Only highlight today if we're viewing the current week
+  if (currentWeek === displayedWeek && currentYear === displayedYear) {
+    // Get all day columns
+    const dayHeaders = document.querySelectorAll('.day-header');
+    
+    // Loop through headers to find today
+    for (let i = 0; i < dayHeaders.length; i++) {
+      if (dayHeaders[i].textContent.trim() === todayName) {
+        dayHeaders[i].classList.add('today');
+        // Also highlight time slots for today
+        const hourRows = document.querySelectorAll('.hour-row');
+        hourRows.forEach(row => {
+          const todaySlot = row.querySelectorAll('.time-slot')[i];
+          if (todaySlot) {
+            todaySlot.classList.add('today-slot');
+          }
+        });
+        break;
+      }
     }
   }
 }

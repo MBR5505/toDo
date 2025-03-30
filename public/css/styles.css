@@ -529,6 +529,54 @@ main {
   background-color: var(--today-highlight);
 }
 
+/* Todo count wrapper - for time slots with multiple todos */
+.todo-count-wrapper {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: min-height 0.3s ease-out;
+}
+
+.todo-count-badge {
+  background-color: var(--primary-light);
+  color: var(--dark-color);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.2s ease-in-out;
+  cursor: pointer;
+  text-align: center;
+}
+
+.todo-count-wrapper:hover {
+  z-index: 10;
+  min-height: max-content;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  border-radius: 6px;
+}
+
+.todo-count-wrapper:hover .todo-count-badge {
+  opacity: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
+.todos-expanded {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+}
+
+.todo-count-wrapper:hover .todos-expanded {
+  display: flex;
+}
+
 /* Todo Item Styling */
 .todo-item {
   background-color: var(--primary-light);
@@ -539,6 +587,8 @@ main {
   position: relative;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-left: 3px solid var(--primary-light); /* Default border */
+  border-radius: 0 4px 4px 0; /* Round only right corners */
 }
 
 .todo-item:hover {
@@ -548,6 +598,7 @@ main {
 
 .todo-item.completed {
   background-color: var(--completed-bg);
+  border-left-color: var(--success-color);
 }
 
 .todo-title {

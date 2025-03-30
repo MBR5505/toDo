@@ -73,13 +73,53 @@
                 return isDayMatch && todoHour === hour;
               });
               
-              todosForSlot.forEach(todo => {
+              if (todosForSlot.length > 1) { %>
+                <div class="todo-count-wrapper">
+                  <div class="todo-count-badge"><%= todosForSlot.length %> ToDo<%= todosForSlot.length !== 1 ? 's' : '' %></div>
+                  <div class="todos-expanded">
+                    <% todosForSlot.forEach(todo => {
+                      // Format time nicely for display
+                      const [hours, minutes] = todo.time.split(':');
+                      const h = parseInt(hours);
+                      const displayTime = `${h > 12 ? h - 12 : h}:${minutes} ${h >= 12 ? 'PM' : 'AM'}`;
+                    %>
+                      <div class="todo-item <%= todo.completed ? 'completed' : '' %>" 
+                          style="<%= todo.group ? `border-left-color: var(--${todo.group.color}-color);` : '' %>"
+                          title="<%= todo.description || '' %>">
+                        <div class="todo-title">
+                          <%= todo.title %> 
+                          <span class="todo-exact-time"><%= displayTime %></span>
+                        </div>
+                        <div class="todo-actions">
+                          <form action="/todos/toggle/<%= todo._id %>" method="POST" class="inline-form">
+                            <button type="submit" class="action-btn toggle-btn" title="Mark as <%= todo.completed ? 'incomplete' : 'complete' %>">
+                              <i class="fas <%= todo.completed ? 'fa-check-circle' : 'fa-circle' %>"></i>
+                            </button>
+                          </form>
+                          <a href="/todos/edit/<%= todo._id %>" class="action-btn edit-btn" title="Edit">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                          <form action="/todos/delete/<%= todo._id %>" method="POST" class="inline-form delete-form">
+                            <button type="submit" class="action-btn delete-btn" title="Delete">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    <% }); %>
+                  </div>
+                </div>
+              <% } else if (todosForSlot.length === 1) { 
+                // For a single todo, we show it directly
+                const todo = todosForSlot[0];
                 // Format time nicely for display
                 const [hours, minutes] = todo.time.split(':');
                 const h = parseInt(hours);
                 const displayTime = `${h > 12 ? h - 12 : h}:${minutes} ${h >= 12 ? 'PM' : 'AM'}`;
               %>
-                <div class="todo-item <%= todo.completed ? 'completed' : '' %>" title="<%= todo.description || '' %>">
+                <div class="todo-item <%= todo.completed ? 'completed' : '' %>"
+                    style="<%= todo.group ? `border-left-color: var(--${todo.group.color}-color);` : '' %>"
+                    title="<%= todo.description || '' %>">
                   <div class="todo-title">
                     <%= todo.title %> 
                     <span class="todo-exact-time"><%= displayTime %></span>
@@ -100,7 +140,7 @@
                     </form>
                   </div>
                 </div>
-              <% }); %>
+              <% } %>
             </div>
           <% }); %>
         </div>
