@@ -60,13 +60,30 @@
               <% 
               // Find todos for this day and hour
               const todosForSlot = todos.filter(todo => {
-                return todo.day === day && parseInt(todo.time.split(':')[0]) === hour;
+                const todoHour = parseInt(todo.time.split(':')[0]);
+                
+                // More flexible day matching - case insensitive and handles both short and full names
+                const todoDay = todo.day.toLowerCase();
+                const currentDay = day.toLowerCase();
+                const isDayMatch = todoDay === currentDay || 
+                                   todoDay.startsWith(currentDay.slice(0, 3)) || 
+                                   currentDay.startsWith(todoDay.slice(0, 3));
+                
+                // Check if the day matches and the hour is the same
+                return isDayMatch && todoHour === hour;
               });
               
-              todosForSlot.forEach(todo => { 
+              todosForSlot.forEach(todo => {
+                // Format time nicely for display
+                const [hours, minutes] = todo.time.split(':');
+                const h = parseInt(hours);
+                const displayTime = `${h > 12 ? h - 12 : h}:${minutes} ${h >= 12 ? 'PM' : 'AM'}`;
               %>
                 <div class="todo-item <%= todo.completed ? 'completed' : '' %>" title="<%= todo.description || '' %>">
-                  <div class="todo-title"><%= todo.title %></div>
+                  <div class="todo-title">
+                    <%= todo.title %> 
+                    <span class="todo-exact-time"><%= displayTime %></span>
+                  </div>
                   <div class="todo-actions">
                     <form action="/todos/toggle/<%= todo._id %>" method="POST" class="inline-form">
                       <button type="submit" class="action-btn toggle-btn" title="Mark as <%= todo.completed ? 'incomplete' : 'complete' %>">

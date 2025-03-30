@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+
+<div class="todo-form-container">
+  <h2>Create New Group</h2>
+  
+  <% if (typeof error !== 'undefined') { %>
+    <div class="error-message">
+      <%= error %>
+    </div>
+  <% } %>
+  
+  <form action="/todos/groups/create" method="POST">
+    <div class="form-group">
+      <label for="name">Group Name *</label>
+      <input 
+        type="text" 
+        id="name" 
+        name="name" 
+        required 
+        value="<%= typeof formData !== 'undefined' ? formData.name : '' %>"
+        placeholder="Work, Personal, School, etc."
+      >
+    </div>
+    
+    <div class="form-group">
+      <label>Color *</label>
+      <div class="color-options">
+        <% colors.forEach(color => { %>
+          <div class="color-option">
+            <input 
+              type="radio" 
+              id="color-<%= color %>" 
+              name="color" 
+              value="<%= color %>" 
+              <%= typeof formData !== 'undefined' && formData.color === color ? 'checked' : color === 'blue' ? 'checked' : '' %>
+            >
+            <label for="color-<%= color %>" class="color-label <%= color %>">
+              <span class="color-circle"></span>
+              <%= color.charAt(0).toUpperCase() + color.slice(1) %>
+            </label>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <a href="/todos/upcoming" class="btn secondary">Cancel</a>
+      <button type="submit" class="btn primary">Create Group</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../partials/footer') %>

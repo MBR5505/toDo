@@ -1,4 +1,5 @@
 const Todo = require('../models/Todo');
+const Group = require('../models/Group'); // Fixed missing closing parenthesis
 const { getWeekNumber, getStartAndEndOfWeek } = require('../utils/dateHelpers');
 
 exports.getTodos = async (req, res) => {
@@ -17,17 +18,40 @@ exports.getTodos = async (req, res) => {
 exports.getWeek = async (req, res) => {
   try {
     const { year, week } = req.params;
-    const { startDate, endDate } = getStartAndEndOfWeek(parseInt(year), parseInt(week));
+    const parsedYear = parseInt(year);
+    const parsedWeek = parseInt(week);
     
+    // Try fetching both by date range and by week/year fields
     const todos = await Todo.find({
       user: req.user.id,
-      date: { $gte: startDate, $lte: endDate }
+      $or: [
+        { week: parsedWeek, year: parsedYear },
+        { 
+          date: { 
+            $gte: getStartAndEndOfWeek(parsedYear, parsedWeek).startDate, 
+            $lte: getStartAndEndOfWeek(parsedYear, parsedWeek).endDate 
+          }
+        }
+      ]
     }).sort({ date: 1 });
+    
+    // For debugging
+    console.log(`Found ${todos.length} todos for week ${week}, year ${year}`);
+    if (todos.length > 0) {
+      console.log('Sample todo:', {
+        title: todos[0].title,
+        day: todos[0].day,
+        time: todos[0].time,
+        date: todos[0].date,
+        week: todos[0].week,
+        year: todos[0].year
+      });
+    }
     
     res.render('pages/todos', {
       todos,
-      currentWeek: parseInt(week),
-      currentYear: parseInt(year),
+      currentWeek: parsedWeek,
+      currentYear: parsedYear,
       user: req.user
     });
   } catch (error) {
@@ -38,27 +62,150 @@ exports.getWeek = async (req, res) => {
 
 exports.getUpcoming = async (req, res) => {
   try {
-    const now = new Date();
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10; // 10 groups per page
+    const skip = (page - 1) * limit;
+    const searchQuery = req.query.search || '';
+    const sortBy = req.query.sortBy || 'group'; // Default sort by group
+    const timeSort = req.query.timeSort || 'asc'; // Default ascending time sort
     
-    const todos = await Todo.find({
-      user: req.user.id,
-      date: { $gte: now }
-    }).sort({ date: 1 });
+    // Find all user's todos (for statistics)
+    const allTodos = await Todo.find({ user: req.user.id });
     
-    res.render('pages/upcoming', { todos, user: req.user });
+    // Calculate statistics
+    const stats = {
+      totalTodos: allTodos.length,
+      completedTodos: allTodos.filter(todo => todo.completed).length,
+      incompleteTodos: allTodos.filter(todo => !todo.completed).length
+    };
+    
+    // Find all user's groups
+    const allGroups = await Group.find({ user: req.user.id });
+    stats.totalGroups = allGroups.length;
+    
+    let todos = [];
+    let groups = [];
+    let totalPages = 0;
+    
+    // Different queries based on sort type
+    if (sortBy === 'todo') {
+      // Sort by todos
+      const todoQuery = { user: req.user.id };
+      
+      // Add search to query if provided
+      if (searchQuery) {
+        todoQuery.$or = [
+          { title: { $regex: searchQuery, $options: 'i' } },
+          { description: { $regex: searchQuery, $options: 'i' } }
+        ];
+      }
+      
+      // Count for pagination
+      const totalTodos = await Todo.countDocuments(todoQuery);
+      totalPages = Math.ceil(totalTodos / limit);
+      
+      // Get todos with pagination
+      todos = await Todo.find(todoQuery)
+        .populate('group')
+        .sort({ date: timeSort === 'asc' ? 1 : -1 })
+        .skip(skip)
+        .limit(limit);
+    } else {
+      // Sort by groups
+      const groupQuery = { user: req.user.id };
+      
+      // Add search to query if provided
+      if (searchQuery) {
+        groupQuery.name = { $regex: searchQuery, $options: 'i' };
+      }
+      
+      // Count groups + 1 for unassigned (for pagination)
+      const totalGroupCount = await Group.countDocuments(groupQuery);
+      totalPages = Math.ceil((totalGroupCount + 1) / limit); // +1 for unassigned group
+      
+      // Get groups with pagination
+      groups = await Group.find(groupQuery)
+        .skip(skip)
+        .limit(limit);
+      
+      // Get all todos for these groups (including unassigned)
+      const groupIds = groups.map(g => g._id);
+      
+      // Todos query based on search and groupIds
+      const todosQuery = { 
+        user: req.user.id,
+        $or: [
+          { group: { $in: groupIds } },
+          { group: null } // Include unassigned todos
+        ]
+      };
+      
+      // Add title/description search if provided
+      if (searchQuery) {
+        todosQuery.$and = [
+          {
+            $or: [
+              { title: { $regex: searchQuery, $options: 'i' } },
+              { description: { $regex: searchQuery, $options: 'i' } }
+            ]
+          }
+        ];
+      }
+      
+      todos = await Todo.find(todosQuery).populate('group');
+    }
+    
+    // Group todos by group
+    const todosByGroup = {};
+    
+    // Add unassigned group first
+    todosByGroup.unassigned = todos.filter(todo => !todo.group);
+    
+    // Add other groups
+    todos.filter(todo => todo.group).forEach(todo => {
+      const groupId = todo.group._id.toString();
+      if (!todosByGroup[groupId]) {
+        todosByGroup[groupId] = [];
+      }
+      todosByGroup[groupId].push(todo);
+    });
+    
+    res.render('pages/upcoming', { 
+      user: req.user,
+      todos,
+      groups,
+      todosByGroup,
+      stats,
+      currentPage: page,
+      totalPages,
+      sortBy,
+      timeSort,
+      searchQuery
+    });
   } catch (error) {
     console.error(error);
     res.status(500).render('pages/error', { error: 'Error loading upcoming todos', user: req.user });
   }
 };
 
-exports.getCreateTodo = (req, res) => {
-  res.render('pages/createTodo', { user: req.user });
+exports.getCreateTodo = async (req, res) => {
+  try {
+    // Get user groups
+    const groups = await Group.find({ user: req.user.id });
+    
+    res.render('pages/createTodo', { 
+      user: req.user,
+      groups
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).render('pages/error', { error: 'Error loading groups', user: req.user });
+  }
 };
 
 exports.postCreateTodo = async (req, res) => {
   try {
-    const { title, description, date, time } = req.body;
+    const { title, description, date, time, group } = req.body;
     
     const todoDate = new Date(date);
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -74,7 +221,8 @@ exports.postCreateTodo = async (req, res) => {
       day,
       week: weekInfo,
       year: todoDate.getFullYear(),
-      user: req.user.id
+      user: req.user.id,
+      group: group === 'none' ? null : group
     });
     
     await todo.save();
@@ -100,7 +248,14 @@ exports.getEditTodo = async (req, res) => {
       return res.status(404).render('pages/error', { error: 'Todo not found', user: req.user });
     }
     
-    res.render('pages/editTodo', { todo, user: req.user });
+    // Get user groups
+    const groups = await Group.find({ user: req.user.id });
+    
+    res.render('pages/editTodo', { 
+      todo, 
+      user: req.user,
+      groups
+    });
   } catch (error) {
     console.error(error);
     res.status(500).render('pages/error', { error: 'Error loading todo', user: req.user });
@@ -109,7 +264,7 @@ exports.getEditTodo = async (req, res) => {
 
 exports.postEditTodo = async (req, res) => {
   try {
-    const { title, description, date, time, completed } = req.body;
+    const { title, description, date, time, completed, group } = req.body;
     
     const todoDate = new Date(date);
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -127,7 +282,8 @@ exports.postEditTodo = async (req, res) => {
         day,
         week: weekInfo,
         year: todoDate.getFullYear(),
-        completed: completed === 'on' // Handle checkbox value
+        completed: completed === 'on',
+        group: group === 'none' ? null : group
       },
       { new: true }
     );

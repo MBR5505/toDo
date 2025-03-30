@@ -2,46 +2,180 @@
 
 <div class="upcoming-container">
   <div class="upcoming-header">
-    <h2>Upcoming Tasks</h2>
-    <a href="/todos/create" class="btn primary">
-      <i class="fas fa-plus"></i> Create New Todo
-    </a>
+    <h2>Task Manager</h2>
+    
+    <div class="filter-controls">
+      <!-- Search Bar - Updated for real-time search -->
+      <div class="search-form">
+        <div class="search-wrapper">
+          <input 
+            type="text" 
+            id="realtime-search"
+            name="search" 
+            placeholder="Search groups or todos..." 
+            value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+          >
+          <button type="button" id="clear-search" class="clear-search-btn" style="display: none;">
+            <i class="fas fa-times"></i>
+          </button>
+          <button type="button" class="search-btn">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Sort Controls -->
+      <div class="sort-controls">
+        <label for="sortBy">View by:</label>
+        <select id="sortBy" onchange="updateSortType(this.value)">
+          <option value="group" <%= sortBy === 'group' ? 'selected' : '' %>>Groups</option>
+          <option value="todo" <%= sortBy === 'todo' ? 'selected' : '' %>>Todos</option>
+        </select>
+        
+        <% if (sortBy === 'todo') { %>
+          <label for="timeSort">Order:</label>
+          <select id="timeSort" onchange="updateTimeSort(this.value)">
+            <option value="asc" <%= timeSort === 'asc' ? 'selected' : '' %>>Soonest first</option>
+            <option value="desc" <%= timeSort === 'desc' ? 'selected' : '' %>>Latest first</option>
+          </select>
+        <% } %>
+      </div>
+    </div>
   </div>
   
-  <% if (todos.length === 0) { %>
-    <div class="no-todos">
-      <p>You don't have any upcoming tasks.</p>
-      <a href="/todos/create" class="btn secondary">Create Your First Todo</a>
-    </div>
-  <% } else { %>
-    <div class="upcoming-list">
-      <% 
-      // Group todos by date
-      const todosByDate = {};
-      todos.forEach(todo => {
-        const dateStr = todo.date.toDateString();
-        if (!todosByDate[dateStr]) {
-          todosByDate[dateStr] = [];
-        }
-        todosByDate[dateStr].push(todo);
-      });
+  <div class="upcoming-content">
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+      <h3>Statistics</h3>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value"><%= stats.totalTodos %></div>
+          <div class="stat-label">Total Tasks</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-value"><%= stats.totalGroups %></div>
+          <div class="stat-label">Groups</div>
+        </div>
+        
+        <div class="stat-detail">
+          <div class="stat-item">
+            <span class="stat-icon completed"><i class="fas fa-check-circle"></i></span>
+            <span class="stat-count"><%= stats.completedTodos %> completed</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon pending"><i class="fas fa-hourglass-half"></i></span>
+            <span class="stat-count"><%= stats.incompleteTodos %> pending</span>
+          </div>
+        </div>
+      </div>
       
-      // Display todos grouped by date
-      Object.keys(todosByDate).sort((a, b) => new Date(a) - new Date(b)).forEach(dateStr => {
-        const dateTodos = todosByDate[dateStr];
-      %>
-        <div class="date-group">
-          <h3 class="date-header"><%= dateStr %></h3>
-          <div class="date-todos">
-            <% dateTodos.forEach(todo => { %>
-              <div class="todo-card <%= todo.completed ? 'completed' : '' %>">
+      <div class="actions">
+        <a href="/todos/create" class="btn primary">
+          <i class="fas fa-plus"></i> New Todo
+        </a>
+        <a href="/todos/groups/create" class="btn secondary">
+          <i class="fas fa-folder-plus"></i> New Group
+        </a>
+      </div>
+    </div>
+    
+    <!-- Group Grid or Todo List based on sort type -->
+    <div class="content-area">
+      <% if (sortBy === 'group') { %>
+        <!-- Group Grid View -->
+        <div class="group-grid">
+          <!-- Unassigned Group -->
+          <% if (todosByGroup.unassigned && todosByGroup.unassigned.length > 0) { %>
+            <div class="group-card unassigned">
+              <div class="group-header">
+                <h3>Unassigned</h3>
+                <span class="todo-count"><%= todosByGroup.unassigned.length %></span>
+              </div>
+              <div class="group-todos">
+                <% todosByGroup.unassigned.slice(0, 3).forEach(todo => { %>
+                  <div class="group-todo-item <%= todo.completed ? 'completed' : '' %>">
+                    <span class="todo-title"><%= todo.title %></span>
+                    <span class="todo-date"><%= new Date(todo.date).toLocaleDateString() %></span>
+                  </div>
+                <% }) %>
+                <% if (todosByGroup.unassigned.length > 3) { %>
+                  <div class="more-todos">
+                    + <%= todosByGroup.unassigned.length - 3 %> more
+                  </div>
+                <% } %>
+              </div>
+              <a href="/todos" class="view-all">View All</a>
+            </div>
+          <% } %>
+          
+          <!-- Other Groups -->
+          <% groups.forEach(group => { %>
+            <% const groupTodos = todosByGroup[group._id.toString()] || []; %>
+            <div class="group-card" style="--group-color: var(--<%= group.color %>-color);">
+              <div class="group-header">
+                <h3><%= group.name %></h3>
+                <span class="todo-count"><%= groupTodos.length %></span>
+              </div>
+              <div class="group-todos">
+                <% if (groupTodos.length === 0) { %>
+                  <div class="empty-group">No tasks in this group</div>
+                <% } else { %>
+                  <% groupTodos.slice(0, 3).forEach(todo => { %>
+                    <div class="group-todo-item <%= todo.completed ? 'completed' : '' %>">
+                      <span class="todo-title"><%= todo.title %></span>
+                      <span class="todo-date"><%= new Date(todo.date).toLocaleDateString() %></span>
+                    </div>
+                  <% }) %>
+                  <% if (groupTodos.length > 3) { %>
+                    <div class="more-todos">
+                      + <%= groupTodos.length - 3 %> more
+                    </div>
+                  <% } %>
+                <% } %>
+              </div>
+              <div class="group-actions">
+                <a href="/todos/groups/edit/<%= group._id %>" class="edit-group">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <a href="/todos?group=<%= group._id %>" class="view-all">View All</a>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <!-- Todo List View -->
+        <div class="todo-list">
+          <% if (todos.length === 0) { %>
+            <div class="no-todos">
+              <p>No matching todos found.</p>
+              <a href="/todos/create" class="btn secondary">Create New Todo</a>
+            </div>
+          <% } else { %>
+            <% todos.forEach(todo => { %>
+              <div class="todo-card <%= todo.completed ? 'completed' : '' %>" 
+                  style="<%= todo.group ? `--todo-color: var(--${todo.group.color}-color);` : '' %>">
                 <div class="todo-card-header">
                   <h4 class="todo-title"><%= todo.title %></h4>
-                  <span class="todo-time"><%= todo.time %></span>
+                  <div class="todo-meta">
+                    <span class="todo-time">
+                      <i class="far fa-clock"></i> <%= todo.time %>
+                    </span>
+                    <span class="todo-date">
+                      <i class="far fa-calendar-alt"></i> <%= new Date(todo.date).toLocaleDateString() %>
+                    </span>
+                    <% if (todo.group) { %>
+                      <span class="todo-group" style="color: var(--<%= todo.group.color %>-color);">
+                        <i class="fas fa-folder"></i> <%= todo.group.name %>
+                      </span>
+                    <% } %>
+                  </div>
                 </div>
+                
                 <% if (todo.description) { %>
                   <p class="todo-description"><%= todo.description %></p>
                 <% } %>
+                
                 <div class="todo-card-actions">
                   <form action="/todos/toggle/<%= todo._id %>" method="POST" class="inline-form">
                     <button type="submit" class="action-btn toggle-btn">
@@ -59,15 +193,157 @@
                   </form>
                 </div>
               </div>
-            <% }); %>
-          </div>
+            <% }) %>
+          <% } %>
         </div>
-      <% }); %>
+      <% } %>
+    </div>
+  </div>
+  
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+    <div class="pagination">
+      <% if (currentPage > 1) { %>
+        <a href="/todos/upcoming?page=<%= currentPage - 1 %>&sortBy=<%= sortBy %>&timeSort=<%= timeSort %>&search=<%= searchQuery %>" 
+           class="pagination-link prev">
+          <i class="fas fa-chevron-left"></i> Previous
+        </a>
+      <% } %>
+      
+      <div class="page-numbers">
+        <% for(let i = 1; i <= totalPages; i++) { %>
+          <a href="/todos/upcoming?page=<%= i %>&sortBy=<%= sortBy %>&timeSort=<%= timeSort %>&search=<%= searchQuery %>" 
+            class="pagination-link <%= i === currentPage ? 'active' : '' %>">
+            <%= i %>
+          </a>
+        <% } %>
+      </div>
+      
+      <% if (currentPage < totalPages) { %>
+        <a href="/todos/upcoming?page=<%= currentPage + 1 %>&sortBy=<%= sortBy %>&timeSort=<%= timeSort %>&search=<%= searchQuery %>" 
+           class="pagination-link next">
+          Next <i class="fas fa-chevron-right"></i>
+        </a>
+      <% } %>
     </div>
   <% } %>
 </div>
 
 <script>
+  // Existing functions for sorting
+  function updateSortType(value) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('sortBy', value);
+    currentUrl.searchParams.set('page', 1); // Reset to page 1
+    window.location.href = currentUrl.toString();
+  }
+  
+  function updateTimeSort(value) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('timeSort', value);
+    window.location.href = currentUrl.toString();
+  }
+  
+  // Real-time search functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('realtime-search');
+    const clearButton = document.getElementById('clear-search');
+    const groupCards = document.querySelectorAll('.group-card');
+    const todoCards = document.querySelectorAll('.todo-card');
+    const noResults = document.createElement('div');
+    
+    noResults.className = 'no-results';
+    noResults.innerHTML = '<p>No matching items found</p>';
+    noResults.style.display = 'none';
+    
+    // Add no results message to the content area
+    document.querySelector('.content-area').appendChild(noResults);
+    
+    // Show clear button when text is present
+    function toggleClearButton() {
+      clearButton.style.display = searchInput.value ? 'block' : 'none';
+    }
+    
+    // Filter items based on search term
+    function filterItems(searchTerm) {
+      searchTerm = searchTerm.toLowerCase().trim();
+      let visibleCount = 0;
+      
+      // If we're in group view
+      if (document.querySelector('.group-grid')) {
+        groupCards.forEach(card => {
+          const groupName = card.querySelector('h3').textContent.toLowerCase();
+          const todoItems = Array.from(card.querySelectorAll('.group-todo-item')).map(item => 
+            item.querySelector('.todo-title').textContent.toLowerCase()
+          );
+          
+          // Check if group name or any todo in the group matches the search
+          const isMatch = groupName.includes(searchTerm) || 
+                          todoItems.some(title => title.includes(searchTerm));
+          
+          card.style.display = isMatch ? 'block' : 'none';
+          if (isMatch) visibleCount++;
+        });
+      } 
+      // If we're in todo view
+      else if (document.querySelector('.todo-list')) {
+        todoCards.forEach(card => {
+          const title = card.querySelector('.todo-title').textContent.toLowerCase();
+          const description = card.querySelector('.todo-description') ? 
+                              card.querySelector('.todo-description').textContent.toLowerCase() : '';
+          const group = card.querySelector('.todo-group') ? 
+                       card.querySelector('.todo-group').textContent.toLowerCase() : '';
+          
+          // Check if title, description, or group matches search
+          const isMatch = title.includes(searchTerm) || 
+                         description.includes(searchTerm) || 
+                         group.includes(searchTerm);
+          
+          card.style.display = isMatch ? 'flex' : 'none';
+          if (isMatch) visibleCount++;
+        });
+      }
+      
+      // Show no results message if needed
+      noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+      
+      // Hide pagination if filtering (we'll show all matching results on one page)
+      const pagination = document.querySelector('.pagination');
+      if (pagination) {
+        pagination.style.display = searchTerm ? 'none' : 'flex';
+      }
+    }
+    
+    // Initialize clear button state
+    toggleClearButton();
+    
+    // Search as user types
+    searchInput.addEventListener('input', function() {
+      filterItems(this.value);
+      toggleClearButton();
+    });
+    
+    // Clear search functionality
+    clearButton.addEventListener('click', function() {
+      searchInput.value = '';
+      filterItems('');
+      toggleClearButton();
+      searchInput.focus();
+    });
+    
+    // Prevent form submission when pressing Enter (we handle filtering in real-time)
+    searchInput.closest('.search-form').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+      }
+    });
+    
+    // Run filter on page load if there's a search term
+    if (searchInput.value) {
+      filterItems(searchInput.value);
+    }
+  });
+  
   // Confirm before deleting a todo
   document.querySelectorAll('.delete-form').forEach(form => {
     form.addEventListener('submit', function(e) {

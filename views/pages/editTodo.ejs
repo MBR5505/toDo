@@ -56,6 +56,24 @@
       </div>
     </div>
     
+    <div class="form-group">
+      <label for="group">Group</label>
+      <select id="group" name="group">
+        <option value="none" <%= !todo.group ? 'selected' : '' %>>Unassigned</option>
+        <% if (groups && groups.length > 0) { %>
+          <% groups.forEach(group => { %>
+            <option value="<%= group._id %>" 
+              <%= todo.group && todo.group.toString() === group._id.toString() ? 'selected' : '' %>>
+              <%= group.name %>
+            </option>
+          <% }) %>
+        <% } %>
+      </select>
+      <div class="form-hint">
+        <a href="/todos/groups/create" class="hint-link"><i class="fas fa-plus-circle"></i> Create new group</a>
+      </div>
+    </div>
+    
     <div class="form-group checkbox-group">
       <label>
         <input 

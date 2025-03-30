@@ -1,0 +1,73 @@
+<%- include('../partials/header') %>
+
+<div class="todo-form-container">
+  <h2>Edit Group</h2>
+  
+  <% if (typeof error !== 'undefined') { %>
+    <div class="error-message">
+      <%= error %>
+    </div>
+  <% } %>
+  
+  <form action="/todos/groups/edit/<%= group._id %>" method="POST">
+    <div class="form-group">
+      <label for="name">Group Name *</label>
+      <input 
+        type="text" 
+        id="name" 
+        name="name" 
+        required 
+        value="<%= group.name %>"
+      >
+    </div>
+    
+    <div class="form-group">
+      <label>Color *</label>
+      <div class="color-options">
+        <% colors.forEach(color => { %>
+          <div class="color-option">
+            <input 
+              type="radio" 
+              id="color-<%= color %>" 
+              name="color" 
+              value="<%= color %>" 
+              <%= group.color === color ? 'checked' : '' %>
+            >
+            <label for="color-<%= color %>" class="color-label <%= color %>">
+              <span class="color-circle"></span>
+              <%= color.charAt(0).toUpperCase() + color.slice(1) %>
+            </label>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+    
+    <div class="meta-info">
+      <div class="meta-item">Created: <%= group.createdAt.toLocaleString() %></div>
+    </div>
+    
+    <div class="form-actions">
+      <a href="/todos/upcoming" class="btn secondary">Cancel</a>
+      <button type="submit" class="btn primary">Update Group</button>
+    </div>
+  </form>
+  
+  <div class="danger-zone">
+    <h3>Danger Zone</h3>
+    <p>Delete this group and unassign all its todos</p>
+    <form action="/todos/groups/delete/<%= group._id %>" method="POST" class="delete-group-form">
+      <button type="submit" class="btn danger">Delete Group</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Confirm before deleting a group
+  document.querySelector('.delete-group-form').addEventListener('submit', function(e) {
+    if (!confirm('Are you sure you want to delete this group? All todos will be unassigned.')) {
+      e.preventDefault();
+    }
+  });
+</script>
+
+<%- include('../partials/footer') %>
