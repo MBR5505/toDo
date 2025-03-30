@@ -48,6 +48,9 @@ router.post('/groups/edit/:id', groupController.postEditGroup);
 router.post('/groups/delete/:id', groupController.deleteGroup);
 router.post('/groups/add-todo', groupController.addTodoToGroup);
 
+// Add this new route for viewing group todos
+router.get('/groups/:id/todos', todoController.getGroupTodos);
+
 // Debug route to check todos in database - remove in production
 router.get('/debug', isAuthenticated, async (req, res) => {
   try {

@@ -105,7 +105,7 @@
                   </div>
                 <% } %>
               </div>
-              <a href="/todos" class="view-all">View All</a>
+              <a href="/todos/groups/unassigned/todos" class="view-all">View All</a>
             </div>
           <% } %>
           
@@ -138,7 +138,7 @@
                 <a href="/todos/groups/edit/<%= group._id %>" class="edit-group">
                   <i class="fas fa-edit"></i>
                 </a>
-                <a href="/todos?group=<%= group._id %>" class="view-all">View All</a>
+                <a href="/todos/groups/<%= group._id %>/todos" class="view-all">View All</a>
               </div>
             </div>
           <% }) %>

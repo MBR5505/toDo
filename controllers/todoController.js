@@ -226,7 +226,7 @@ exports.postCreateTodo = async (req, res) => {
     });
     
     await todo.save();
-    res.redirect('/todos');
+    res.redirect('/todos/upcoming');  // Fixed syntax error
   } catch (error) {
     console.error(error);
     res.status(500).render('pages/createTodo', {
@@ -292,7 +292,7 @@ exports.postEditTodo = async (req, res) => {
       return res.status(404).render('pages/error', { error: 'Todo not found', user: req.user });
     }
     
-    res.redirect('/todos');
+    res.redirect('/todos/upcoming');  // Fixed syntax error
   } catch (error) {
     console.error(error);
     res.status(500).render('pages/error', { error: 'Error updating todo', user: req.user });
@@ -310,7 +310,7 @@ exports.deleteTodo = async (req, res) => {
       return res.status(404).json({ error: 'Todo not found' });
     }
     
-    res.redirect('/todos');
+    res.redirect('/todos/upcoming');  // Changed from '/todos' to '/todos/upcoming'
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error deleting todo' });
@@ -331,9 +331,72 @@ exports.toggleTodo = async (req, res) => {
     todo.completed = !todo.completed;
     await todo.save();
     
-    res.redirect('/todos');
+    res.redirect('/todos/upcoming');  // Changed from '/todos' to '/todos/upcoming'
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error toggling todo status' });
+  }
+};
+
+// Add this new method for viewing group todos
+exports.getGroupTodos = async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6; // Changed from 10 to 6 todos per page
+    const skip = (page - 1) * limit;
+    const timeSort = req.query.timeSort || 'asc';
+    
+    // Query object - check if we're looking at ungrouped or a specific group
+    const query = { user: req.user.id };
+    
+    if (groupId === 'unassigned') {
+      query.group = null;
+    } else {
+      query.group = groupId;
+    }
+    
+    // Get the group (if not unassigned)
+    let group = null;
+    if (groupId !== 'unassigned') {
+      group = await Group.findOne({ _id: groupId, user: req.user.id });
+      if (!group) {
+        return res.status(404).render('pages/error', { error: 'Group not found', user: req.user });
+      }
+    }
+    
+    // Count total todos for this group
+    const totalTodos = await Todo.countDocuments(query);
+    const totalPages = Math.ceil(totalTodos / limit);
+    
+    // Get todos with pagination
+    const todos = await Todo.find(query)
+      .sort({ date: timeSort === 'asc' ? 1 : -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    // Calculate statistics
+    const allUserTodos = await Todo.find({ user: req.user.id });
+    const stats = {
+      totalTodos: allUserTodos.length,
+      completedTodos: allUserTodos.filter(todo => todo.completed).length,
+      incompleteTodos: allUserTodos.filter(todo => !todo.completed).length,
+      groupTodos: totalTodos
+    };
+    
+    // Render the group view
+    res.render('pages/groupTodos', {
+      todos,
+      group,
+      groupId,
+      stats,
+      currentPage: page,
+      totalPages,
+      timeSort,
+      user: req.user
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).render('pages/error', { error: 'Error loading group todos', user: req.user });
   }
 };
